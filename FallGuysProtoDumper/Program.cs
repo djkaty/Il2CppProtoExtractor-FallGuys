@@ -45,6 +45,26 @@ namespace FallGuysProtoDumper
             // Print all of the message names
             foreach (var message in messages)
                 Console.WriteLine(message.GetScopedCSharpName(Scope.Empty));
+
+            // All protobuf fields have this property attribute
+            var protoMember = model.GetType("ProtoBuf.ProtoMemberAttribute");
+
+            // Get all of the custom attributes generators for ProtoMember so we can determine field numbers
+            var atts = model.CustomAttributeGenerators.Where(a => a.AttributeType == protoMember);
+
+            // Create a mapping of CAG virtual addresses to field numbers by reading the disassembly code
+            var vaFieldMapping = atts.Select(a => new {
+                VirtualAddress = a.VirtualAddress.Start,
+                FieldNumber    = a.GetMethodBody()[0x0D]
+            })
+            // Fixup for generator which merges [Obsolete] and [ProtoMember]
+            // We can improve upon this ugly hack with other features of Il2CppInspector in the future!
+            .ToDictionary(  kv => kv.VirtualAddress,
+                            kv => kv.FieldNumber != 139? kv.FieldNumber : 5);
+
+            // All attribute mappings
+            foreach (var item in vaFieldMapping)
+                Console.WriteLine($"{item.Key.ToAddressString()} = {item.Value}");
         }
     }
 }
