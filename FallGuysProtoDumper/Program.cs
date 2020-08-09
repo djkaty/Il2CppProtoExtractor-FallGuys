@@ -19,6 +19,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Il2CppInspector.Reflection;
@@ -30,6 +31,9 @@ namespace FallGuysProtoDumper
         // Set the path to your metadata and binary files here
         public static string MetadataFile = @"F:\Source\Repos\Il2CppInspector\Il2CppTests\TestBinaries\FallGuys\global-metadata.dat";
         public static string BinaryFile = @"F:\Source\Repos\Il2CppInspector\Il2CppTests\TestBinaries\FallGuys\GameAssembly.dll";
+
+        // Set the path to your desired output here
+        public static string ProtoFile = @"fallguys.proto";
 
         private static StringBuilder proto = new StringBuilder();
 
@@ -74,10 +78,6 @@ namespace FallGuysProtoDumper
             // Get all the messages by searching for types with [ProtoContract]
             var messages = model.TypesByDefinitionIndex.Where(t => t.CustomAttributes.Any(a => a.AttributeType == protoContract));
 
-            // Print all of the message names
-            foreach (var message in messages)
-                Console.WriteLine(message.GetScopedCSharpName(Scope.Empty));
-
             // All protobuf fields have this property attribute
             var protoMember = model.GetType("ProtoBuf.ProtoMemberAttribute");
 
@@ -106,10 +106,6 @@ namespace FallGuysProtoDumper
             vaFieldMapping[0x180055270] = 5;
             vaFieldMapping[0x180005660] = 7;
             vaFieldMapping[0x18002FCB0] = 1;
-
-            // All attribute mappings
-            foreach (var item in vaFieldMapping)
-                Console.WriteLine($"{item.Key.ToAddressString()} = {item.Value}");
 
             // Keep a list of all the enums we need to output (HashSet ensures unique values - we only want each enum once!)
             var enums = new List<TypeInfo>();
@@ -145,16 +141,18 @@ namespace FallGuysProtoDumper
             }
 
             // Output enums
+            var enumText = new StringBuilder();
+
             foreach (var e in enums) {
-                Console.WriteLine("enum " + e.Name + " {");
+                enumText.Append("enum " + e.Name + " {\n");
                 var namesAndValues = e.GetEnumNames().Zip(e.GetEnumValues().Cast<int>(), (n, v) => n + " = " + v);
                 foreach (var nv in namesAndValues)
-                    Console.WriteLine("  " + nv + ";");
-                Console.WriteLine("}\n");
+                    enumText.Append("  " + nv + ";\n");
+                enumText.Append("}\n\n");
             }
 
             // Output messages
-            Console.WriteLine(proto);
+            File.WriteAllText(ProtoFile, "syntax = \"proto3\";\n\n" + enumText.ToString() + proto.ToString());
         }
 
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
