@@ -156,8 +156,22 @@ namespace FallGuysProtoDumper
                 isRepeated = true;
             }
 
+            // Handle maps (IDictionary)
+            if (type.ImplementedInterfaces.Any(i => i.FullName == "System.Collections.Generic.IDictionary`2")) {
+
+                // This time we have two generic arguments to deal with - the key and the value
+                var keyFullName = type.GenericTypeArguments[0].FullName;
+                var valueFullName = type.GenericTypeArguments[1].FullName;
+
+                // We're going to have to deal with building this proto type name separately from the value types below
+                // We don't set isRepeated because it's implied by using a map type
+                protoTypes.TryGetValue(keyFullName, out var keyFriendlyName);
+                protoTypes.TryGetValue(valueFullName, out var valueFriendlyName);
+                typeFriendlyName = $"map<{keyFriendlyName ?? type.GenericTypeArguments[0].Name}, {valueFriendlyName ?? type.GenericTypeArguments[1].Name}>";
+            }
+
             // Handle primitive value types
-            if (protoTypes.TryGetValue(typeFullName, out var protoTypeName))
+            else if (protoTypes.TryGetValue(typeFullName, out var protoTypeName))
                 typeFriendlyName = protoTypeName;
 
             // Handle repeated fields
