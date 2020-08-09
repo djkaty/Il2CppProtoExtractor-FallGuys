@@ -111,6 +111,9 @@ namespace FallGuysProtoDumper
             foreach (var item in vaFieldMapping)
                 Console.WriteLine($"{item.Key.ToAddressString()} = {item.Value}");
 
+            // Keep a list of all the enums we need to output (HashSet ensures unique values - we only want each enum once!)
+            var enums = new List<TypeInfo>();
+
             // Let's iterate over all of the messages and find all of the fields
             // This is any field or property with the [ProtoMember] attribute
             foreach (var message in messages) {
@@ -124,18 +127,34 @@ namespace FallGuysProtoDumper
                 foreach (var field in fields) {
                     var pmAtt = field.CustomAttributes.First(a => a.AttributeType == protoMember);
                     outputField(field.Name, field.FieldType, pmAtt);
+
+                    if (field.FieldType.IsEnum)
+                        enums.Add(field.FieldType);
                 }
 
                 // Output C# properties
                 foreach (var prop in props) {
                     var pmAtt = prop.CustomAttributes.First(a => a.AttributeType == protoMember);
                     outputField(prop.Name, prop.PropertyType, pmAtt);
+
+                    if (prop.PropertyType.IsEnum)
+                        enums.Add(prop.PropertyType);
                 }
 
                 proto.Append("}\n\n");
-
-                Console.WriteLine(proto);
             }
+
+            // Output enums
+            foreach (var e in enums) {
+                Console.WriteLine("enum " + e.Name + " {");
+                var namesAndValues = e.GetEnumNames().Zip(e.GetEnumValues().Cast<int>(), (n, v) => n + " = " + v);
+                foreach (var nv in namesAndValues)
+                    Console.WriteLine("  " + nv + ";");
+                Console.WriteLine("}\n");
+            }
+
+            // Output messages
+            Console.WriteLine(proto);
         }
 
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
