@@ -139,17 +139,30 @@ namespace FallGuysProtoDumper
 
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
             // Handle arrays
-            var typeBaseName = type.IsArray? type.ElementType.FullName : type.FullName ?? string.Empty;
+            var isRepeated = type.IsArray;
+
+            var typeFullName = isRepeated? type.ElementType.FullName : type.FullName ?? string.Empty;
+            var typeFriendlyName = isRepeated? type.ElementType.Name : type.Name;
+
+            // Handle one-dimensional collections like lists
+            // We could also use type.Namespace == "System.Collections.Generic" && type.UnmangledBaseName == "List"
+            // or typeBaseName == "System.Collections.Generic.List`1" but these are less flexible
+            if (type.ImplementedInterfaces.Any(i => i.FullName == "System.Collections.Generic.IList`1")) {
+                // Get the type of the IList by looking at its first generic argument
+                // Note this is a naive implementation which doesn't handle nesting of lists or arrays in lists etc.
+
+                typeFullName = type.GenericTypeArguments[0].FullName;
+                typeFriendlyName = type.GenericTypeArguments[0].Name;
+                isRepeated = true;
+            }
 
             // Handle primitive value types
-            if (protoTypes.TryGetValue(typeBaseName, out var protoTypeName))
-                typeBaseName = protoTypeName;
-            else
-                typeBaseName = type.IsArray? type.ElementType.Name : type.Name;
+            if (protoTypes.TryGetValue(typeFullName, out var protoTypeName))
+                typeFriendlyName = protoTypeName;
 
-            // Handle arrays
-            var annotatedName = typeBaseName;
-            if (type.IsArray)
+            // Handle repeated fields
+            var annotatedName = typeFriendlyName;
+            if (isRepeated)
                 annotatedName = "repeated " + annotatedName;
 
             // Output field
