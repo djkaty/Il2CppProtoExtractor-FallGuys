@@ -138,8 +138,22 @@ namespace FallGuysProtoDumper
         }
 
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
-            protoTypes.TryGetValue(type.FullName ?? string.Empty, out var protoTypeName);
-            proto.Append($"  {protoTypeName ?? type.Name} {name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
+            // Handle arrays
+            var typeBaseName = type.IsArray? type.ElementType.FullName : type.FullName ?? string.Empty;
+
+            // Handle primitive value types
+            if (protoTypes.TryGetValue(typeBaseName, out var protoTypeName))
+                typeBaseName = protoTypeName;
+            else
+                typeBaseName = type.IsArray? type.ElementType.Name : type.Name;
+
+            // Handle arrays
+            var annotatedName = typeBaseName;
+            if (type.IsArray)
+                annotatedName = "repeated " + annotatedName;
+
+            // Output field
+            proto.Append($"  {annotatedName} {name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
         }
     }
 }
