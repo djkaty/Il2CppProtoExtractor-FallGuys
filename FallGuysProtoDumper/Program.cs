@@ -14,6 +14,7 @@
 
 using System;
 using System.Linq;
+using System.Text;
 using Il2CppInspector.Reflection;
 
 namespace FallGuysProtoDumper
@@ -50,7 +51,7 @@ namespace FallGuysProtoDumper
             var protoMember = model.GetType("ProtoBuf.ProtoMemberAttribute");
 
             // Get all of the custom attributes generators for ProtoMember so we can determine field numbers
-            var atts = model.CustomAttributeGenerators.Where(a => a.AttributeType == protoMember);
+            var atts = model.CustomAttributeGenerators[protoMember];
 
             // Create a mapping of CAG virtual addresses to field numbers by reading the disassembly code
             var vaFieldMapping = atts.Select(a => new {
@@ -59,8 +60,21 @@ namespace FallGuysProtoDumper
             })
             // Fixup for generator which merges [Obsolete] and [ProtoMember]
             // We can improve upon this ugly hack with other features of Il2CppInspector in the future!
-            .ToDictionary(  kv => kv.VirtualAddress,
-                            kv => kv.FieldNumber != 139? kv.FieldNumber : 5);
+            .ToDictionary(kv => kv.VirtualAddress, kv => kv.FieldNumber);
+
+            // Find CAGs which are used by other attribute types and shared with ProtoMember
+            var sharedAtts = vaFieldMapping.Keys.Select(a => model.CustomAttributeGeneratorsByAddress[a].Where(a => a.AttributeType != protoMember))
+                .Where(l => l.Any())
+                .SelectMany(l => l);
+
+            // Warn about shared mappings
+            foreach (var item in sharedAtts)
+                Console.WriteLine($"WARNING: Attribute generator {item.VirtualAddress.ToAddressString()} is shared with {item.AttributeType.FullName} - check disassembly listing");
+
+            // Fixups we have determined from the disassembly
+            vaFieldMapping[0x180055270] = 5;
+            vaFieldMapping[0x180005660] = 7;
+            vaFieldMapping[0x18002FCB0] = 1;
 
             // All attribute mappings
             foreach (var item in vaFieldMapping)
