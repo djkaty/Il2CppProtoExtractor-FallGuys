@@ -50,7 +50,8 @@ namespace FallGuysProtoDumper
             ["System.Boolean"] = "bool",
             ["System.String"] = "string",
             ["System.Byte[]"] = "bytes",
-            ["System.Char"] = "uint32"
+            ["System.Char"] = "uint32",
+            ["System.DateTime"] = "google.protobuf.Timestamp"
         };
 
         private static Dictionary<ulong, byte> vaFieldMapping;
@@ -140,6 +141,7 @@ namespace FallGuysProtoDumper
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
             // Handle arrays
             var isRepeated = type.IsArray;
+            var isOptional = false;
 
             var typeFullName = isRepeated? type.ElementType.FullName : type.FullName ?? string.Empty;
             var typeFriendlyName = isRepeated? type.ElementType.Name : type.Name;
@@ -170,6 +172,15 @@ namespace FallGuysProtoDumper
                 typeFriendlyName = $"map<{keyFriendlyName ?? type.GenericTypeArguments[0].Name}, {valueFriendlyName ?? type.GenericTypeArguments[1].Name}>";
             }
 
+            // Handle nullable types
+            if (type.FullName == "System.Nullable`1") {
+                // Once again we look at the first generic argument to get the real type
+
+                typeFullName = type.GenericTypeArguments[0].FullName;
+                typeFriendlyName = type.GenericTypeArguments[0].Name;
+                isOptional = true;
+            }
+
             // Handle primitive value types
             else if (protoTypes.TryGetValue(typeFullName, out var protoTypeName))
                 typeFriendlyName = protoTypeName;
@@ -178,6 +189,10 @@ namespace FallGuysProtoDumper
             var annotatedName = typeFriendlyName;
             if (isRepeated)
                 annotatedName = "repeated " + annotatedName;
+
+            // Handle nullable (optional) fields
+            if (isOptional)
+                annotatedName = "optional " + annotatedName;
 
             // Output field
             proto.Append($"  {annotatedName} {name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
