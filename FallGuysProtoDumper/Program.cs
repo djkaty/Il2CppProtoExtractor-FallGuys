@@ -79,6 +79,35 @@ namespace FallGuysProtoDumper
             // All attribute mappings
             foreach (var item in vaFieldMapping)
                 Console.WriteLine($"{item.Key.ToAddressString()} = {item.Value}");
+
+            // Let's iterate over all of the messages and find all of the fields
+            // This is any field or property with the [ProtoMember] attribute
+            foreach (var message in messages) {
+                var name   = message.CSharpName;
+                var fields = message.DeclaredFields.Where(f => f.CustomAttributes.Any(a => a.AttributeType == protoMember));
+                var props  = message.DeclaredProperties.Where(p => p.CustomAttributes.Any(a => a.AttributeType == protoMember));
+
+                var proto = new StringBuilder();
+                proto.Append($"message {name} {{\n");
+
+                // TODO: We are going to need to map these C# types to protobuf types!
+
+                // Output C# fields
+                foreach (var field in fields) {
+                    var pmAtt = field.CustomAttributes.First(a => a.AttributeType == protoMember);
+                    proto.Append($"  {field.FieldType.Name} {field.Name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
+                }
+
+                // Output C# properties
+                foreach (var prop in props) {
+                    var pmAtt = prop.CustomAttributes.First(a => a.AttributeType == protoMember);
+                    proto.Append($"  {prop.PropertyType.Name} {prop.Name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
+                }
+
+                proto.Append("}\n");
+
+                Console.WriteLine(proto);
+            }
         }
     }
 }
