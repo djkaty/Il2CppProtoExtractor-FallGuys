@@ -3,13 +3,18 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30320.27
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FallGuysProtoDumper", "FallGuysProtoDumper\FallGuysProtoDumper.csproj", "{298BF527-1A0D-4319-9AF0-A51210368165}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FallGuysProtoDumper", "FallGuysProtoDumper\FallGuysProtoDumper.csproj", "{298BF527-1A0D-4319-9AF0-A51210368165}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Il2CppInspector", "Il2CppInspector\Il2CppInspector.Common\Il2CppInspector.csproj", "{8BE014A6-7AAA-4502-9475-AEB1614FD9EC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Submodules", "Submodules", "{98F73A4A-AFCD-4FFA-AB40-BDE4B1215B58}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bin2Object", "Il2CppInspector\Bin2Object\Bin2Object\Bin2Object.csproj", "{A1856DCA-26F9-4552-B8BC-36427BBEBF42}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8F697CBE-C209-4C16-973B-7D2AF5B4FB6A}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

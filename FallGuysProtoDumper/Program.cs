@@ -2,6 +2,9 @@
 // to re-construct .proto files for applications using protobuf-net
 
 // Copyright 2020 Katy Coe - http://www.djkaty.com - https://github.com/djkaty
+// https://github.com/djkaty/Il2CppProtoExtractor-FallGuys
+// https://github.com/djkaty/Il2CppInspector
+// http://www.djkaty.com/tag/il2cpp
 
 // This example uses "Fall Guys: Ultimate Knockout" as the target:
 // Steam package: https://steamdb.info/sub/369927/
@@ -152,7 +155,16 @@ namespace FallGuysProtoDumper
             }
 
             // Output messages
-            File.WriteAllText(ProtoFile, "syntax = \"proto3\";\n\n" + enumText.ToString() + proto.ToString());
+            var banner = @"// Proto file reconstruction tutorial example
+// For educational purposes only
+// https://github.com/djkaty/Il2CppProtoExtractor-FallGuys
+// https://github.com/djkaty/Il2CppInspector
+// http://www.djkaty.com/tag/il2cpp
+
+syntax=""proto3"";
+";
+
+            File.WriteAllText(ProtoFile, banner + enumText.ToString() + proto.ToString());
         }
 
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
