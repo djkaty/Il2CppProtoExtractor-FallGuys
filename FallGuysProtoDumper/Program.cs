@@ -12,6 +12,11 @@
 // Il2CppInspector: https://github.com/djkaty/Il2CppInspector
 // protobuf-net: https://github.com/protobuf-net/protobuf-net
 
+// References: 
+// https://developers.google.com/protocol-buffers/docs/overview
+// https://code.google.com/archive/p/protobuf-net/wikis/GettingStarted.wiki
+// http://loyc.net/2013/protobuf-net-unofficial-manual.html#:~:text=Protobuf%2Dnet%20can%20serialize%20a,feature%20is%20disabled%20by%20default.
+
 using System;
 using System.Linq;
 using System.Text;
