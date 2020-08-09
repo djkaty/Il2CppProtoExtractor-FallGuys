@@ -13,6 +13,7 @@
 // protobuf-net: https://github.com/protobuf-net/protobuf-net
 
 using System;
+using System.Linq;
 using Il2CppInspector.Reflection;
 
 namespace FallGuysProtoDumper
@@ -34,6 +35,16 @@ namespace FallGuysProtoDumper
             // This creates a .NET Reflection-style interface we can query with Linq
             Console.WriteLine("Creating type model...");
             var model = new TypeModel(package);
+
+            // All protobuf messages have this class attribute
+            var protoContract = model.GetType("ProtoBuf.ProtoContractAttribute");
+
+            // Get all the messages by searching for types with [ProtoContract]
+            var messages = model.TypesByDefinitionIndex.Where(t => t.CustomAttributes.Any(a => a.AttributeType == protoContract));
+
+            // Print all of the message names
+            foreach (var message in messages)
+                Console.WriteLine(message.GetScopedCSharpName(Scope.Empty));
         }
     }
 }
