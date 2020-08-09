@@ -1,4 +1,5 @@
 ﻿using System;
+using Il2CppInspector;
 
 namespace FallGuysProtoDumper
 {
