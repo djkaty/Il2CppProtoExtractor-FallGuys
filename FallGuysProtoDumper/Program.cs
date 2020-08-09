@@ -18,6 +18,7 @@
 // http://loyc.net/2013/protobuf-net-unofficial-manual.html#:~:text=Protobuf%2Dnet%20can%20serialize%20a,feature%20is%20disabled%20by%20default.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Il2CppInspector.Reflection;
@@ -85,6 +86,26 @@ namespace FallGuysProtoDumper
             foreach (var item in vaFieldMapping)
                 Console.WriteLine($"{item.Key.ToAddressString()} = {item.Value}");
 
+            // Define type map from .NET types to protobuf types
+            // This is specifically how protobuf-net maps types and is not the same for all .NET protobuf libraries
+            var protoTypes = new Dictionary<string, string> {
+                ["System.Int32"] = "int32",
+                ["System.UInt32"] = "uint32",
+                ["System.Byte"] = "uint32",
+                ["System.SByte"] = "int32",
+                ["System.UInt16"] = "uint32",
+                ["System.Int16"] = "int32",
+                ["System.Int64"] = "int64",
+                ["System.UInt64"] = "uint64",
+                ["System.Single"] = "float",
+                ["System.Double"] = "double",
+                ["System.Decimal"] = "bcl.Decimal",
+                ["System.Boolean"] = "bool",
+                ["System.String"] = "string",
+                ["System.Byte[]"] = "bytes",
+                ["System.Char"] = "uint32"
+            };
+
             // Let's iterate over all of the messages and find all of the fields
             // This is any field or property with the [ProtoMember] attribute
             foreach (var message in messages) {
@@ -100,13 +121,17 @@ namespace FallGuysProtoDumper
                 // Output C# fields
                 foreach (var field in fields) {
                     var pmAtt = field.CustomAttributes.First(a => a.AttributeType == protoMember);
-                    proto.Append($"  {field.FieldType.Name} {field.Name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
+
+                    protoTypes.TryGetValue(field.FieldType.FullName ?? string.Empty, out var protoTypeName);
+                    proto.Append($"  {protoTypeName ?? field.FieldType.Name} {field.Name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
                 }
 
                 // Output C# properties
                 foreach (var prop in props) {
                     var pmAtt = prop.CustomAttributes.First(a => a.AttributeType == protoMember);
-                    proto.Append($"  {prop.PropertyType.Name} {prop.Name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
+
+                    protoTypes.TryGetValue(prop.PropertyType.FullName ?? string.Empty, out var protoTypeName);
+                    proto.Append($"  {protoTypeName ?? prop.PropertyType.Name} {prop.Name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
                 }
 
                 proto.Append("}\n");
