@@ -92,13 +92,10 @@ namespace FallGuysProtoDumper
                 VirtualAddress = a.VirtualAddress.Start,
                 FieldNumber    = a.GetMethodBody()[0x0D]
             })
-            // Fixup for generator which merges [Obsolete] and [ProtoMember]
-            // We can improve upon this ugly hack with other features of Il2CppInspector in the future!
             .ToDictionary(kv => kv.VirtualAddress, kv => kv.FieldNumber);
 
             // Find CAGs which are used by other attribute types and shared with ProtoMember
             var sharedAtts = vaFieldMapping.Keys.Select(a => model.CustomAttributeGeneratorsByAddress[a].Where(a => a.AttributeType != protoMember))
-                .Where(l => l.Any())
                 .SelectMany(l => l);
 
             // Warn about shared mappings
