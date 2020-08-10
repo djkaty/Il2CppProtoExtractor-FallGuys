@@ -108,7 +108,7 @@ namespace FallGuysProtoDumper
             vaFieldMapping[0x18002FCB0] = 1;
 
             // Keep a list of all the enums we need to output (HashSet ensures unique values - we only want each enum once!)
-            var enums = new List<TypeInfo>();
+            var enums = new HashSet<TypeInfo>();
 
             // Let's iterate over all of the messages and find all of the fields
             // This is any field or property with the [ProtoMember] attribute
@@ -208,7 +208,7 @@ syntax=""proto3"";
             }
 
             // Handle primitive value types
-            else if (protoTypes.TryGetValue(typeFullName, out var protoTypeName))
+            if (protoTypes.TryGetValue(typeFullName, out var protoTypeName))
                 typeFriendlyName = protoTypeName;
 
             // Handle repeated fields
