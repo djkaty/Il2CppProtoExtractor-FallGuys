@@ -25,6 +25,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Gee.External.Capstone;
+using Gee.External.Capstone.X86;
 using Il2CppInspector.Reflection;
 
 namespace FallGuysProtoDumper
@@ -38,6 +40,10 @@ namespace FallGuysProtoDumper
         // Set the path to your desired output here
         public static string ProtoFile = @"fallguys.proto";
 
+        // Capstone disassembler API
+        private static CapstoneX86Disassembler asm = CapstoneX86Disassembler.CreateX86Disassembler(X86DisassembleMode.Bit64);
+
+        // Output proto file text
         private static StringBuilder proto = new StringBuilder();
 
         // Define type map from .NET types to protobuf types
@@ -61,7 +67,8 @@ namespace FallGuysProtoDumper
             ["System.DateTime"] = "google.protobuf.Timestamp"
         };
 
-        private static Dictionary<ulong, byte> vaFieldMapping;
+        // Mapping of CAG virtual addresses to ProtoMember field number constructor arguments
+        private static Dictionary<ulong, int> vaFieldMapping;
 
         static void Main(string[] args) {
 
@@ -75,6 +82,9 @@ namespace FallGuysProtoDumper
             Console.WriteLine("Creating type model...");
             var model = new TypeModel(package);
 
+            // Configure disassembler
+            asm.EnableInstructionDetails = true;
+
             // All protobuf messages have this class attribute
             var protoContract = model.GetType("ProtoBuf.ProtoContractAttribute");
 
@@ -84,28 +94,22 @@ namespace FallGuysProtoDumper
             // All protobuf fields have this property attribute
             var protoMember = model.GetType("ProtoBuf.ProtoMemberAttribute");
 
+            // Get the address of the ProtoMemberAttribute constructor
+            var protoMemberCtor = (long) protoMember.DeclaredConstructors[0].VirtualAddress.Value.Start;
+
             // Get all of the custom attributes generators for ProtoMember so we can determine field numbers
             var atts = model.CustomAttributeGenerators[protoMember];
 
             // Create a mapping of CAG virtual addresses to field numbers by reading the disassembly code
             vaFieldMapping = atts.Select(a => new {
                 VirtualAddress = a.VirtualAddress.Start,
-                FieldNumber    = a.GetMethodBody()[0x0D]
+                FieldNumber    = getProtoMemberArgument(a, protoMemberCtor)
             })
             .ToDictionary(kv => kv.VirtualAddress, kv => kv.FieldNumber);
 
-            // Find CAGs which are used by other attribute types and shared with ProtoMember
-            var sharedAtts = vaFieldMapping.Keys.Select(a => model.CustomAttributeGeneratorsByAddress[a].Where(a => a.AttributeType != protoMember))
-                .SelectMany(l => l);
-
-            // Warn about shared mappings
-            foreach (var item in sharedAtts)
-                Console.WriteLine($"WARNING: Attribute generator {item.VirtualAddress.ToAddressString()} is shared with {item.AttributeType.FullName} - check disassembly listing");
-
-            // Fixups we have determined from the disassembly
-            vaFieldMapping[0x180055270] = 5;
-            vaFieldMapping[0x180005660] = 7;
-            vaFieldMapping[0x18002FCB0] = 1;
+            // Display mappings
+            foreach (var mapping in vaFieldMapping)
+                Console.WriteLine($"{mapping.Key.ToAddressString()} = {mapping.Value}");
 
             // Keep a list of all the enums we need to output (HashSet ensures unique values - we only want each enum once!)
             var enums = new HashSet<TypeInfo>();
@@ -164,6 +168,7 @@ syntax=""proto3"";
             File.WriteAllText(ProtoFile, banner + enumText.ToString() + proto.ToString());
         }
 
+        // Output a single field definition in a protobuf message
         private static void outputField(string name, TypeInfo type, CustomAttributeData pmAtt) {
             // Handle arrays
             var isRepeated = type.IsArray;
@@ -222,6 +227,41 @@ syntax=""proto3"";
 
             // Output field
             proto.Append($"  {annotatedName} {name} = {vaFieldMapping[pmAtt.VirtualAddress.Start]};\n");
+        }
+
+        // Scan the object code to find the first argument to ProtoMember for a given CAG
+        private static int getProtoMemberArgument(CustomAttributeData att, long protoMemberCtor) {
+
+            // Disassemble the CAG
+            var code = asm.Disassemble(att.GetMethodBody(), (long) att.VirtualAddress.Start);
+            var insIndex = -1;
+            var disp = 0;
+
+            // Step forwards through each instruction
+            while (++insIndex < code.Length && disp == 0) {
+                var ins = code[insIndex];
+
+                // Look for JMP and CALL instructions to the ProtoMember constructor
+                if ((ins.Id == X86InstructionId.X86_INS_JMP || ins.Id == X86InstructionId.X86_INS_CALL)
+                    && ins.Details.Operands[0].Immediate == protoMemberCtor) {
+
+                    // Now step backwards looking for the most recent LEA EDX instruction
+                    while (--insIndex >= 0 && disp == 0) {
+                        ins = code[insIndex];
+
+                        if (ins.Id == X86InstructionId.X86_INS_LEA &&
+                            ins.Details.ExplicitlyWrittenRegisters[0].Id == X86RegisterId.X86_REG_EDX) {
+
+                            // The instruction is LEA EDX, [R8 + disp]
+                            // We know that R8 is zero so the displacement is the field number
+                            disp = (int) ins.Details.Displacement;
+                        }
+                    }
+                    if (insIndex == -1)
+                        throw new InvalidOperationException("Unable to determine ProtoMember field number");
+                }
+            }
+            return disp;
         }
     }
 }
